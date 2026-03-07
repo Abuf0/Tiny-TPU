@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1772792729" />
+    <testcase name="test_ttu_core" classname="test_ttu_core" file="D:\Learn\IC\project\NPU\design\TTU\TTU\src\test\scala\sim\test_ttu_core.py" lineno="815" time="0.9652321338653564" sim_time_ns="32140.001" ratio_time="33297.69065115203" />
+  </testsuite>
+</testsuites>

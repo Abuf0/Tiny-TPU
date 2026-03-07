@@ -1,0 +1,851 @@
+{
+  "tensors": [
+    {
+      "name": "X",
+      "shape": [
+        1,
+        3,
+        4,
+        4
+      ],
+      "dtype": "u8",
+      "addr": 268435968,
+      "bytes": 48
+    },
+    {
+      "name": "W",
+      "shape": [
+        8,
+        3,
+        3,
+        3
+      ],
+      "dtype": "i8",
+      "addr": 268435456,
+      "bytes": 216
+    },
+    {
+      "name": "Y",
+      "shape": [
+        16,
+        8
+      ],
+      "dtype": "u8",
+      "addr": 268436224,
+      "bytes": 128
+    },
+    {
+      "name": "Wfc",
+      "shape": [
+        8,
+        8
+      ],
+      "dtype": "i8",
+      "addr": 268435712,
+      "bytes": 64
+    },
+    {
+      "name": "Z",
+      "shape": [
+        16,
+        8
+      ],
+      "dtype": "u8",
+      "addr": 268436480,
+      "bytes": 128
+    }
+  ],
+  "ops": [
+    {
+      "op_type": "Conv2D",
+      "name": "conv0",
+      "inputs": [
+        "X",
+        "W"
+      ],
+      "outputs": [
+        "Y"
+      ],
+      "attrs": {
+        "layout": "NCHW",
+        "stride": 1,
+        "pad": 1,
+        "dilation": 1,
+        "kh": 3,
+        "kw": 3
+      }
+    },
+    {
+      "op_type": "Linear",
+      "name": "fc0",
+      "inputs": [
+        "Y",
+        "Wfc"
+      ],
+      "outputs": [
+        "Z"
+      ],
+      "attrs": {}
+    }
+  ],
+  "conv_tiles": [
+    {
+      "layer": "conv0",
+      "oh0": 0,
+      "ow0": 0,
+      "ohT": 4,
+      "owT": 4,
+      "oc0": 0,
+      "ocT": 8,
+      "x_base_dram": 268435968,
+      "w_base_dram": 268435456,
+      "y_base_dram": 268436224,
+      "meta": {
+        "C": 3,
+        "H": 4,
+        "W": 4,
+        "OC": 8,
+        "OH": 4,
+        "OW": 4,
+        "KH": 3,
+        "KW": 3,
+        "stride": 1,
+        "pad": 1,
+        "dilation": 1,
+        "bpe_x": 1,
+        "bpe_w": 1,
+        "bpe_y": 1
+      }
+    }
+  ],
+  "gemm_tiles": [
+    {
+      "layer": "fc0",
+      "m0": 0,
+      "n0": 0,
+      "k0": 0,
+      "tm": 16,
+      "tn": 8,
+      "tk": 8,
+      "a_base_dram": 268436224,
+      "b_base_dram": 268435712,
+      "c_base_dram": 268436480,
+      "meta": {
+        "A_K": 8,
+        "B_N": 8,
+        "bpe_a": 1,
+        "bpe_b": 1,
+        "bpe_c": 1
+      }
+    }
+  ],
+  "program": [
+    {
+      "idx": 0,
+      "op": "AGU_DMA",
+      "w0": 6292992,
+      "w1": 251658240,
+      "w2": 0,
+      "w3": 393216,
+      "deps": [],
+      "succ": 2,
+      "comment": "AGU_DMA desc=0 src=0xf000000 dst=0x0 rowB=6 rows=6 sstr=0 dstr=6"
+    },
+    {
+      "idx": 1,
+      "op": "DMA",
+      "w0": 0,
+      "w1": 36,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        0
+      ],
+      "succ": 1,
+      "comment": "DMA0 H2L1 IN.PING desc=0 bytes=36"
+    },
+    {
+      "idx": 2,
+      "op": "AGU_DMA",
+      "w0": 6292992,
+      "w1": 251658240,
+      "w2": 36,
+      "w3": 393216,
+      "deps": [
+        0
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=0 src=0xf000000 dst=0x24 rowB=6 rows=6 sstr=0 dstr=6"
+    },
+    {
+      "idx": 3,
+      "op": "DMA",
+      "w0": 0,
+      "w1": 36,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        1,
+        2
+      ],
+      "succ": 1,
+      "comment": "DMA0 H2L1 IN.PING desc=0 bytes=36"
+    },
+    {
+      "idx": 4,
+      "op": "AGU_DMA",
+      "w0": 6292992,
+      "w1": 251658240,
+      "w2": 72,
+      "w3": 393216,
+      "deps": [
+        2
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=0 src=0xf000000 dst=0x48 rowB=6 rows=6 sstr=0 dstr=6"
+    },
+    {
+      "idx": 5,
+      "op": "DMA",
+      "w0": 0,
+      "w1": 36,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        3,
+        4
+      ],
+      "succ": 1,
+      "comment": "DMA0 H2L1 IN.PING desc=0 bytes=36"
+    },
+    {
+      "idx": 6,
+      "op": "AGU_DMA",
+      "w0": 4195328,
+      "w1": 268435968,
+      "w2": 7,
+      "w3": 393220,
+      "deps": [
+        4
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=0 src=0x10000200 dst=0x7 rowB=4 rows=4 sstr=4 dstr=6"
+    },
+    {
+      "idx": 7,
+      "op": "DMA",
+      "w0": 0,
+      "w1": 16,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        5,
+        6
+      ],
+      "succ": 1,
+      "comment": "DMA0 H2L1 IN.PING desc=0 bytes=16"
+    },
+    {
+      "idx": 8,
+      "op": "AGU_DMA",
+      "w0": 4195328,
+      "w1": 268435984,
+      "w2": 43,
+      "w3": 393220,
+      "deps": [
+        6
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=0 src=0x10000210 dst=0x2b rowB=4 rows=4 sstr=4 dstr=6"
+    },
+    {
+      "idx": 9,
+      "op": "DMA",
+      "w0": 0,
+      "w1": 16,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        7,
+        8
+      ],
+      "succ": 1,
+      "comment": "DMA0 H2L1 IN.PING desc=0 bytes=16"
+    },
+    {
+      "idx": 10,
+      "op": "AGU_DMA",
+      "w0": 4195328,
+      "w1": 268436000,
+      "w2": 79,
+      "w3": 393220,
+      "deps": [
+        8
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=0 src=0x10000220 dst=0x4f rowB=4 rows=4 sstr=4 dstr=6"
+    },
+    {
+      "idx": 11,
+      "op": "DMA",
+      "w0": 0,
+      "w1": 16,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        9,
+        10
+      ],
+      "succ": 5,
+      "comment": "DMA0 H2L1 IN.PING desc=0 bytes=16"
+    },
+    {
+      "idx": 12,
+      "op": "WAIT",
+      "w0": 0,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        11
+      ],
+      "succ": 0,
+      "comment": "wait DMA0_DONE"
+    },
+    {
+      "idx": 13,
+      "op": "AGU_DMA",
+      "w0": 28311809,
+      "w1": 268435456,
+      "w2": 2097152,
+      "w3": 0,
+      "deps": [
+        10
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=1 src=0x10000000 dst=0x200000 rowB=27 rows=1 sstr=0 dstr=0"
+    },
+    {
+      "idx": 14,
+      "op": "DMA",
+      "w0": 265,
+      "w1": 27,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        13
+      ],
+      "succ": 1,
+      "comment": "DMA1 H2L1 WGT.PING desc=1 bytes=27"
+    },
+    {
+      "idx": 15,
+      "op": "AGU_DMA",
+      "w0": 28311809,
+      "w1": 268435483,
+      "w2": 2097179,
+      "w3": 0,
+      "deps": [
+        13
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=1 src=0x1000001b dst=0x20001b rowB=27 rows=1 sstr=0 dstr=0"
+    },
+    {
+      "idx": 16,
+      "op": "DMA",
+      "w0": 265,
+      "w1": 27,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        14,
+        15
+      ],
+      "succ": 1,
+      "comment": "DMA1 H2L1 WGT.PING desc=1 bytes=27"
+    },
+    {
+      "idx": 17,
+      "op": "AGU_DMA",
+      "w0": 28311809,
+      "w1": 268435510,
+      "w2": 2097206,
+      "w3": 0,
+      "deps": [
+        15
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=1 src=0x10000036 dst=0x200036 rowB=27 rows=1 sstr=0 dstr=0"
+    },
+    {
+      "idx": 18,
+      "op": "DMA",
+      "w0": 265,
+      "w1": 27,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        16,
+        17
+      ],
+      "succ": 1,
+      "comment": "DMA1 H2L1 WGT.PING desc=1 bytes=27"
+    },
+    {
+      "idx": 19,
+      "op": "AGU_DMA",
+      "w0": 28311809,
+      "w1": 268435537,
+      "w2": 2097233,
+      "w3": 0,
+      "deps": [
+        17
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=1 src=0x10000051 dst=0x200051 rowB=27 rows=1 sstr=0 dstr=0"
+    },
+    {
+      "idx": 20,
+      "op": "DMA",
+      "w0": 265,
+      "w1": 27,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        18,
+        19
+      ],
+      "succ": 1,
+      "comment": "DMA1 H2L1 WGT.PING desc=1 bytes=27"
+    },
+    {
+      "idx": 21,
+      "op": "AGU_DMA",
+      "w0": 28311809,
+      "w1": 268435564,
+      "w2": 2097260,
+      "w3": 0,
+      "deps": [
+        19
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=1 src=0x1000006c dst=0x20006c rowB=27 rows=1 sstr=0 dstr=0"
+    },
+    {
+      "idx": 22,
+      "op": "DMA",
+      "w0": 265,
+      "w1": 27,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        20,
+        21
+      ],
+      "succ": 1,
+      "comment": "DMA1 H2L1 WGT.PING desc=1 bytes=27"
+    },
+    {
+      "idx": 23,
+      "op": "AGU_DMA",
+      "w0": 28311809,
+      "w1": 268435591,
+      "w2": 2097287,
+      "w3": 0,
+      "deps": [
+        21
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=1 src=0x10000087 dst=0x200087 rowB=27 rows=1 sstr=0 dstr=0"
+    },
+    {
+      "idx": 24,
+      "op": "DMA",
+      "w0": 265,
+      "w1": 27,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        22,
+        23
+      ],
+      "succ": 1,
+      "comment": "DMA1 H2L1 WGT.PING desc=1 bytes=27"
+    },
+    {
+      "idx": 25,
+      "op": "AGU_DMA",
+      "w0": 28311809,
+      "w1": 268435618,
+      "w2": 2097314,
+      "w3": 0,
+      "deps": [
+        23
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=1 src=0x100000a2 dst=0x2000a2 rowB=27 rows=1 sstr=0 dstr=0"
+    },
+    {
+      "idx": 26,
+      "op": "DMA",
+      "w0": 265,
+      "w1": 27,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        24,
+        25
+      ],
+      "succ": 1,
+      "comment": "DMA1 H2L1 WGT.PING desc=1 bytes=27"
+    },
+    {
+      "idx": 27,
+      "op": "AGU_DMA",
+      "w0": 28311809,
+      "w1": 268435645,
+      "w2": 2097341,
+      "w3": 0,
+      "deps": [
+        25
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=1 src=0x100000bd dst=0x2000bd rowB=27 rows=1 sstr=0 dstr=0"
+    },
+    {
+      "idx": 28,
+      "op": "DMA",
+      "w0": 265,
+      "w1": 27,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        26,
+        27
+      ],
+      "succ": 5,
+      "comment": "DMA1 H2L1 WGT.PING desc=1 bytes=27"
+    },
+    {
+      "idx": 29,
+      "op": "WAIT",
+      "w0": 1,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        28
+      ],
+      "succ": 0,
+      "comment": "wait DMA1_DONE"
+    },
+    {
+      "idx": 30,
+      "op": "AGU_CONV",
+      "w0": 0,
+      "w1": 2097152,
+      "w2": 4194304,
+      "w3": 0,
+      "deps": [],
+      "succ": 1,
+      "comment": "AGU_CONV IN=0x0 W=0x200000 OUT=0x400000"
+    },
+    {
+      "idx": 31,
+      "op": "CONV",
+      "w0": 525316,
+      "w1": 6292995,
+      "w2": 16843523,
+      "w3": 0,
+      "deps": [
+        30,
+        11,
+        28
+      ],
+      "succ": 4,
+      "comment": "CONV ohT=4 owT=4 ocT=8 ihT=6 iwT=6 C=3 KH=3 KW=3 stride=1 dil=1"
+    },
+    {
+      "idx": 32,
+      "op": "WAIT",
+      "w0": 4,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        31
+      ],
+      "succ": 0,
+      "comment": "wait CONV_DONE"
+    },
+    {
+      "idx": 33,
+      "op": "STORE",
+      "w0": 0,
+      "w1": 268436224,
+      "w2": 128,
+      "w3": 0,
+      "deps": [
+        31
+      ],
+      "succ": 3,
+      "comment": "STORE OUT.PING -> 0x10000300 bytes=128"
+    },
+    {
+      "idx": 34,
+      "op": "WAIT",
+      "w0": 3,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        33
+      ],
+      "succ": 0,
+      "comment": "wait STORE_DONE"
+    },
+    {
+      "idx": 35,
+      "op": "BUFF_SWITCH",
+      "w0": 2,
+      "w1": 1,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        31,
+        33
+      ],
+      "succ": 0,
+      "comment": "switch OUT->PONG"
+    },
+    {
+      "idx": 36,
+      "op": "BUFF_SWITCH",
+      "w0": 0,
+      "w1": 1,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        11,
+        28
+      ],
+      "succ": 0,
+      "comment": "switch IN->PONG"
+    },
+    {
+      "idx": 37,
+      "op": "BUFF_SWITCH",
+      "w0": 1,
+      "w1": 1,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        11,
+        28
+      ],
+      "succ": 0,
+      "comment": "switch WGT->PONG"
+    },
+    {
+      "idx": 38,
+      "op": "AGU_DMA",
+      "w0": 8392706,
+      "w1": 268436224,
+      "w2": 1048576,
+      "w3": 524296,
+      "deps": [
+        27
+      ],
+      "succ": 2,
+      "comment": "AGU_DMA desc=2 src=0x10000300 dst=0x100000 rowB=8 rows=16 sstr=8 dstr=8"
+    },
+    {
+      "idx": 39,
+      "op": "DMA",
+      "w0": 544,
+      "w1": 128,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        11,
+        38
+      ],
+      "succ": 4,
+      "comment": "DMA0 H2L1 IN.PONG desc=2 bytes=128"
+    },
+    {
+      "idx": 40,
+      "op": "AGU_DMA",
+      "w0": 8390659,
+      "w1": 268435712,
+      "w2": 3145728,
+      "w3": 524296,
+      "deps": [
+        38
+      ],
+      "succ": 1,
+      "comment": "AGU_DMA desc=3 src=0x10000100 dst=0x300000 rowB=8 rows=8 sstr=8 dstr=8"
+    },
+    {
+      "idx": 41,
+      "op": "DMA",
+      "w0": 809,
+      "w1": 64,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        28,
+        40
+      ],
+      "succ": 4,
+      "comment": "DMA1 H2L1 WGT.PONG desc=3 bytes=64"
+    },
+    {
+      "idx": 42,
+      "op": "WAIT",
+      "w0": 0,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        39
+      ],
+      "succ": 0,
+      "comment": "wait DMA0_DONE"
+    },
+    {
+      "idx": 43,
+      "op": "WAIT",
+      "w0": 1,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        41
+      ],
+      "succ": 0,
+      "comment": "wait DMA1_DONE"
+    },
+    {
+      "idx": 44,
+      "op": "AGU_GEMM",
+      "w0": 1048576,
+      "w1": 3145728,
+      "w2": 5242880,
+      "w3": 8396816,
+      "deps": [],
+      "succ": 1,
+      "comment": "AGU_GEMM A=0x100000 B=0x300000 C=0x500000 dims=(16,8,8)"
+    },
+    {
+      "idx": 45,
+      "op": "GEMM",
+      "w0": 484,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        44,
+        39,
+        41,
+        31
+      ],
+      "succ": 3,
+      "comment": "GEMM IN.PONG WGT.PONG OUT.PONG acc=0"
+    },
+    {
+      "idx": 46,
+      "op": "WAIT",
+      "w0": 2,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        45
+      ],
+      "succ": 0,
+      "comment": "wait GEMM_DONE"
+    },
+    {
+      "idx": 47,
+      "op": "STORE",
+      "w0": 1,
+      "w1": 268436480,
+      "w2": 128,
+      "w3": 0,
+      "deps": [
+        45,
+        33
+      ],
+      "succ": 2,
+      "comment": "STORE OUT.PONG -> 0x10000400 bytes=128"
+    },
+    {
+      "idx": 48,
+      "op": "WAIT",
+      "w0": 3,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        47
+      ],
+      "succ": 0,
+      "comment": "wait STORE_DONE"
+    },
+    {
+      "idx": 49,
+      "op": "BUFF_SWITCH",
+      "w0": 2,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        45,
+        47
+      ],
+      "succ": 0,
+      "comment": "switch OUT->PING"
+    },
+    {
+      "idx": 50,
+      "op": "BUFF_SWITCH",
+      "w0": 0,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        39,
+        41
+      ],
+      "succ": 0,
+      "comment": "switch IN->PING"
+    },
+    {
+      "idx": 51,
+      "op": "BUFF_SWITCH",
+      "w0": 1,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [
+        39,
+        41
+      ],
+      "succ": 0,
+      "comment": "switch WGT->PING"
+    },
+    {
+      "idx": 52,
+      "op": "END",
+      "w0": 0,
+      "w1": 0,
+      "w2": 0,
+      "w3": 0,
+      "deps": [],
+      "succ": 0,
+      "comment": "program end"
+    }
+  ]
+}

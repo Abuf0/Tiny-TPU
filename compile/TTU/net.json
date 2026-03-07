@@ -1,0 +1,25 @@
+{
+  "tensors": [
+    { "name": "X",  "shape": [1, 3, 4, 4], "dtype": "u8" },
+    { "name": "W",  "shape": [8, 3, 3, 3],  "dtype": "i8" },
+    { "name": "Y",  "shape": [16, 8],      "dtype": "u8" },
+    { "name": "Wfc","shape": [8, 8],        "dtype": "i8" },
+    { "name": "Z",  "shape": [16, 8],       "dtype": "u8" }
+  ],
+  "ops": [
+    {
+      "op_type": "Conv2D",
+      "name": "conv0",
+      "inputs": ["X", "W"],
+      "outputs": ["Y"],
+      "attrs": { "layout":"NCHW", "stride":1, "pad":1, "dilation":1, "kh":3, "kw":3 }
+    },
+    {
+      "op_type": "Linear",
+      "name": "fc0",
+      "inputs": ["Y", "Wfc"],
+      "outputs": ["Z"],
+      "attrs": {}
+    }
+  ]
+}
