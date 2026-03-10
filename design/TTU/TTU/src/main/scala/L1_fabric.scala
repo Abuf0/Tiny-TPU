@@ -113,6 +113,7 @@ class L1_Fabric(cfg: TTConfig) extends Component {
     val g0,g1,g2 = Bool()
     g0 := False; g1 := False; g2 := False
     switch(last){
+
       is(U(0,2 bits)){
         when(r1){ g1 := True } elsewhen(r2){ g2 := True } elsewhen(r0){ g0 := True }
       }

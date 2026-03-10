@@ -71,11 +71,30 @@
             "OC_TILE": 8
         },
         {
-            "type": "CONV_TILE",
+            "type": "STORE",
             "DEP_CNT": 2,
+            "DEP_ID_0": 0,
+            "DEP_ID_1": 1,
+            "SUCC_CNT": 1,
+            "BASE": "0x28000",
+            "ELEM_BYTES": 1,
+            "LAYOUT_TYPE": 0,
+            "H_OUT": 4,
+            "W_OUT": 4,
+            "C_OUT_LOW": 0,
+            "C_OUT_HIGH": 1,
+            "OH0": 0,
+            "OW0_LOW": 0,
+            "0W0_HIGH": 0,
+            "OC0": 0
+        },
+        {
+            "type": "CONV_TILE",
+            "DEP_CNT": 3,
             "DEP_ID_0": 2,
             "DEP_ID_1": 3,
-            "SUCC_CNT": 2,
+            "DEP_ID_2": 4,
+            "SUCC_CNT": 1,
             "TILE_OH0": 0,
             "TILE_OW0": 0,
             "TILE_OC0": 0,
@@ -88,18 +107,10 @@
             "N_TILE": 8
         },
         {
-            "type": "STORE",
-            "DEP_CNT": 0,
-            "WORD_0": 287454020,
-            "WORD_1": 1432778632,
-            "WORD_2": 2578103244,
-            "WORD_3": 3723427584
-        },
-        {
             "type": "CONV_TILE",
             "DEP_CNT": 1,
-            "DEP_ID_0": 4,
-            "SUCC_CNT": 2,
+            "DEP_ID_0": 5,
+            "SUCC_CNT": 1,
             "TILE_OH0": 0,
             "TILE_OW0": 0,
             "TILE_OC0": 8,
@@ -112,19 +123,10 @@
             "N_TILE": 8
         },
         {
-            "type": "STORE",
-            "DEP_CNT": 1,
-            "DEP_ID_0": 4,
-            "WORD_0": 287454020,
-            "WORD_1": 1432778632,
-            "WORD_2": 2578103244,
-            "WORD_3": 3723427584
-        },
-        {
             "type": "CONV_TILE",
             "DEP_CNT": 1,
             "DEP_ID_0": 6,
-            "SUCC_CNT": 2,
+            "SUCC_CNT": 1,
             "TILE_OH0": 2,
             "TILE_OW0": 0,
             "TILE_OC0": 0,
@@ -137,18 +139,9 @@
             "N_TILE": 8
         },
         {
-            "type": "STORE",
-            "DEP_CNT": 1,
-            "DEP_ID_0": 6,
-            "WORD_0": 287454020,
-            "WORD_1": 1432778632,
-            "WORD_2": 2578103244,
-            "WORD_3": 3723427584
-        },
-        {
             "type": "CONV_TILE",
             "DEP_CNT": 1,
-            "DEP_ID_0": 8,
+            "DEP_ID_0": 7,
             "SUCC_CNT": 0,
             "TILE_OH0": 2,
             "TILE_OW0": 0,
@@ -160,15 +153,6 @@
             "K_TILE": 27,
             "M_TILE": 8,
             "N_TILE": 8
-        },
-        {
-            "type": "STORE",
-            "DEP_CNT": 1,
-            "DEP_ID_0": 8,
-            "WORD_0": 287454020,
-            "WORD_1": 1432778632,
-            "WORD_2": 2578103244,
-            "WORD_3": 3723427584
         }
     ]
 }

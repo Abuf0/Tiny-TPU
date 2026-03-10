@@ -88,6 +88,24 @@ SUB_FIELD_MAP = {
         "TILE_C0": ("WORD_4", 4, 15, 12),
         "OC_TILE": ("WORD_4", 16, 27, 12),
     },
+    # STORE 子字段（严格匹配你的SpinalHDL代码）
+    "STORE": {
+        # WORD_0 → BASE（直接复用整个WORD_0）
+        "BASE": ("WORD_0", 0, 31, 32),
+        # WORD_1拆分（issue_flow.WORD_1的位域）
+        "ELEM_BYTES": ("WORD_1", 0, 2, 3),        # WORD_1[2:0]
+        "LAYOUT_TYPE": ("WORD_1", 3, 4, 2),       # WORD_1[4:3]
+        "H_OUT": ("WORD_1", 5, 16, 12),            # WORD_1[16:5]
+        "W_OUT": ("WORD_1", 17, 28, 12),           # WORD_1[28:17]
+        "C_OUT_LOW": ("WORD_1", 29, 31, 3),        # WORD_1[31:29] → C_IN[2:0]
+        # WORD_2拆分（issue_flow.WORD_2的位域）
+        "C_OUT_HIGH": ("WORD_2", 0, 8, 9),         # WORD_2[8:0] → C_IN[11:3]
+        "OH0": ("WORD_3", 12, 23, 12),        # WORD_3[23:12]
+        "OW0_LOW": ("WORD_3", 24, 31, 8),     # WORD_3[31:24] → TILE_W0[7:0]
+        # WORD_4拆分（issue_flow.WORD_4的位域）
+        "OW0_HIGH": ("WORD_4", 0, 3, 4),      # WORD_4[3:0] → TILE_W0[11:8]
+        "OC0": ("WORD_4", 4, 15, 12)          # WORD_4[15:4]
+    },
     # DMA_NORMAL 子字段
     "DMA_NORMAL": {
         "isLoad": ("WORD_0", 31, 31, 1),          # WORD_0[31]

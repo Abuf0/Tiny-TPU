@@ -31,6 +31,7 @@ case class TTConfig(
                        LOOP_DEPTH: Int      = 8,
                        LD_REQ_DEPTH: Int    = 8,
                        PACKET_DEPTH: Int    = 8,
+                       ST_REQ_DEPTH: Int    = 8,
                        sparsity : Boolean = true,
                        debug_en        : Boolean = true
                      ) {

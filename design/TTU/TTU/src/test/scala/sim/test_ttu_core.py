@@ -879,11 +879,11 @@ async def test_ttu_core(dut):
     assert write_resp == 0, f"写响应错误，期望0，实际{write_resp}"
     cocotb.log.info(f"\n✅ 写寄存器0x10成功！响应码：0x{write_resp.integer:02x}")
 
-    write_resp = await ctrl_axi.write_reg(addr=0x18, data=0xc, timeout_ms=2)    # cmd size
+    write_resp = await ctrl_axi.write_reg(addr=0x18, data=0x9, timeout_ms=2)    # cmd size
     write_resp = await ctrl_axi.write_reg(addr=0x1C, data=0x1, timeout_ms=2)
     write_resp = await ctrl_axi.write_reg(addr=0x24, data=0x0, timeout_ms=2)
     write_resp = await ctrl_axi.write_reg(addr=0x28, data=0x0, timeout_ms=2)
-    write_resp = await ctrl_axi.write_reg(addr=0x2C, data=0x180, timeout_ms=2)    # cmd bytes
+    write_resp = await ctrl_axi.write_reg(addr=0x2C, data=0x120, timeout_ms=2)    # cmd bytes
     write_resp = await ctrl_axi.write_reg(addr=0x30, data=0x1, timeout_ms=2)    # cmd axi trans len
     write_resp = await ctrl_axi.write_reg(addr=0x20, data=0x1, timeout_ms=2)    # write last one
 
@@ -891,22 +891,27 @@ async def test_ttu_core(dut):
     cocotb.log.info("\n=== 测试DMA和中断(TODO) ===")
     # 定义8个32bit的数值列表（完全由你自定义）
     # little bian
-    # cmd0 = [0x0000000000000008000000800000800080008000000000000000000000010004]  # [DMA] ext->IFM
-    # cmd1 = [0x0000000000000008000002400001800080018000000000000000000000010004]  # [DMA] ext->KER
-    # cmd2 = [0x0000000000000008000000400002800080028000000000000001000000000201]  # [AGU_DMA]
-    # cmd3 = [0x0000000000000008000000400002800080028000000000000001000000000203]  # [DMA_AGU]
+#     cmd0 = [0x0000000000000008000000300000800080008000ffffffffffffffff00010004]
+#     cmd1 = [0x0000000000000008000001b00001800080018000ffffffffffffffff00010004]
+#     cmd2 = [0x0000000000000041089266006008008100008000ffffffffffff000000010102]
+#     cmd3 = [0x0008000000010041089266006008008100018000ffffffffffff0001000101fe]
+#     cmd4 = [0x000000080000801b000080040000200000000000ffffffff0003000200020281]
+#     cmd5 = [0x00000000ddeeff0099aabbcc5566778811223344ffffffffffffffff00000005]
+#     cmd6 = [0x000000080000801b000080040000200800000000ffffffffffff000400020181]
+#     cmd7 = [0x00000000ddeeff0099aabbcc5566778811223344ffffffffffff000400000105]
+#     cmd8 = [0x000000080000801b000080040000200000000002ffffffffffff000600020181]
+#     cmd9 = [0x00000000ddeeff0099aabbcc5566778811223344ffffffffffff000600000105]
+#     cmd10 = [0x000000080000801b000080040000200800000002ffffffffffff000800000181]
+#     cmd11 = [0x00000000ddeeff0099aabbcc5566778811223344ffffffffffff000800000105]
     cmd0 = [0x0000000000000008000000300000800080008000ffffffffffffffff00010004]
     cmd1 = [0x0000000000000008000001b00001800080018000ffffffffffffffff00010004]
     cmd2 = [0x0000000000000041089266006008008100008000ffffffffffff000000010102]
     cmd3 = [0x0008000000010041089266006008008100018000ffffffffffff0001000101fe]
-    cmd4 = [0x000000080000801b000080040000200000000000ffffffff0003000200020281]
-    cmd5 = [0x00000000ddeeff0099aabbcc5566778811223344ffffffffffffffff00000005]
-    cmd6 = [0x000000080000801b000080040000200800000000ffffffffffff000400020181]
-    cmd7 = [0x00000000ddeeff0099aabbcc5566778811223344ffffffffffff000400000105]
-    cmd8 = [0x000000080000801b000080040000200000000002ffffffffffff000600020181]
-    cmd9 = [0x00000000ddeeff0099aabbcc5566778811223344ffffffffffff000600000105]
-    cmd10 = [0x000000080000801b000080040000200800000002ffffffffffff000800000181]
-    cmd11 = [0x00000000ddeeff0099aabbcc5566778811223344ffffffffffff000800000105]
+    cmd4 = [0x0000000000000000000000010008008100028000ffffffff0001000000010205]
+    cmd5 = [0x000000080000801b000080040000200000000000ffff00040003000200010381]
+    cmd6 = [0x000000080000801b000080040000200800000000ffffffffffff000500010181]
+    cmd7 = [0x000000080000801b000080040000200000000002ffffffffffff000600010181]
+    cmd8 = [0x000000080000801b000080040000200800000002ffffffffffff000700000181]
     # 调用时指定trans_len=8，mock_data=上述列表
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd0, trans_len=1)
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd1, trans_len=1)
@@ -917,9 +922,9 @@ async def test_ttu_core(dut):
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd6, trans_len=1)
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd7, trans_len=1)
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd8, trans_len=1)
-    dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd9, trans_len=1)
-    dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd10, trans_len=1)
-    dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd11, trans_len=1)
+#     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd9, trans_len=1)
+#     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd10, trans_len=1)
+#     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd11, trans_len=1)
 
 # 1. 生成32bit有效数据的ifm_data（0~99对应32bit值：0x00000000 ~ 0x00000063）
     ifm_data = [i & 0xFFFFFFFF for i in range(48)]  # 确保是32bit无符号整数

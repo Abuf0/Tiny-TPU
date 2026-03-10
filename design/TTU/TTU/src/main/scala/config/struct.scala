@@ -258,11 +258,15 @@ case class alu_fp_dp(cfg: TTConfig) extends Bundle{
 case class store_dp(cfg: TTConfig) extends Bundle{
   val CMD_ID = Bits(cfg.CMD_AW bits)
   val OP_DEC = Bits(8 bits)
-  val WORD_0 = Bits(32 bits)
-  val WORD_1 = Bits(32 bits)
-  val WORD_2 = Bits(32 bits)
-  val WORD_3 = Bits(32 bits)
-  val PADDING = Bits(8 bits)
+  val BASE = Bits(cfg.L1_AW bits)
+  val ELEM_BYTES = Bits(3 bits)
+  val LAYOUT_TYPE = Bits(2 bits)
+  val H_OUT = Bits(12 bits)
+  val W_OUT = Bits(12 bits)
+  val C_OUT = Bits(12 bits)
+  val OH0 = Bits(12 bits)
+  val OW0 = Bits(12 bits)
+  val OC0 = Bits(12 bits)
 }
 
 case class alu_back(cfg: TTConfig) extends Bundle{

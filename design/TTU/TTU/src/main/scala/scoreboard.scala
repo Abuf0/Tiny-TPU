@@ -474,10 +474,25 @@ case class scoreboard(cfg: TTConfig) extends Component {
       io.store_engine_dispatch.valid := issue_flow.valid
       io.store_engine_dispatch.payload.CMD_ID := issue_flow.CMD_ID
       io.store_engine_dispatch.payload.OP_DEC := issue_flow.OP_DEC
-      io.store_engine_dispatch.payload.WORD_0 := issue_flow.WORD_0
-      io.store_engine_dispatch.payload.WORD_1 := issue_flow.WORD_1
-      io.store_engine_dispatch.payload.WORD_2 := issue_flow.WORD_2
-      io.store_engine_dispatch.payload.WORD_3 := issue_flow.WORD_3
+      io.store_engine_dispatch.payload.BASE := issue_flow.WORD_0.resize(cfg.L1_AW)
+
+      // WORD_1
+      io.store_engine_dispatch.payload.ELEM_BYTES  := issue_flow.WORD_1(2 downto 0)
+      io.store_engine_dispatch.payload.LAYOUT_TYPE := issue_flow.WORD_1(4 downto 3)
+      io.store_engine_dispatch.payload.H_OUT        := issue_flow.WORD_1(16 downto 5)
+      io.store_engine_dispatch.payload.W_OUT        := issue_flow.WORD_1(28 downto 17)
+      io.store_engine_dispatch.payload.C_OUT(2 downto 0) := issue_flow.WORD_1(31 downto 29)
+
+      // WORD_2
+      io.store_engine_dispatch.payload.C_OUT(11 downto 3) := issue_flow.WORD_2(8 downto 0)
+      io.store_engine_dispatch.payload.OH0 := issue_flow.WORD_3(23 downto 12)
+      io.store_engine_dispatch.payload.OW0(7 downto 0) := issue_flow.WORD_3(31 downto 24)
+
+      // WORD_4
+      io.store_engine_dispatch.payload.OW0(11 downto 8) := issue_flow.WORD_4(3 downto 0)
+      io.store_engine_dispatch.payload.OC0   := issue_flow.WORD_4(15 downto 4)
+
+
     }
   }
 
