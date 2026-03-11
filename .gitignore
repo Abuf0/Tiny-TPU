@@ -51,3 +51,5 @@ build/
 *.vvp
 *result.xml
 *.pyc
+*scala_compiler.xml
+.idea
