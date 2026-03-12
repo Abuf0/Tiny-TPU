@@ -51,3 +51,4 @@ build/
 *.vvp
 *result.xml
 *.pyc
+*.xml
