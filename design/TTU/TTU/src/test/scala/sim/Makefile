@@ -3,7 +3,7 @@
 SIM ?= icarus
 WAVES = 1
 # 2. SpinalHDL生成的Verilog文件路径
-S2RTL_PATH = D:/Project/Tiny-TPU/design/TTU/TTU/build/s2rtl
+S2RTL_PATH = D:/Learn/IC/project/NPU/design/TTU/TTU/build/s2rtl
 VERILOG_SOURCES = \
 ${S2RTL_PATH}/ttu_core/enumdefine.sv \
 ${S2RTL_PATH}/ttu_core/StreamFifo_34.sv \
@@ -46,6 +46,7 @@ ${S2RTL_PATH}/ttu_core/L1_Fabric.sv \
 ${S2RTL_PATH}/ttu_core/sram_1R1W_wrap.sv \
 ${S2RTL_PATH}/ttu_core/sram_1R1W_wrap_6.sv \
 ${S2RTL_PATH}/ttu_core/ttu_core.sv \
+${S2RTL_PATH}/ttu_core/fp_mac.sv \
 
 #	${S2RTL_PATH}/tensor_core/StreamFifo.sv \
 #    ${S2RTL_PATH}/tensor_core/StreamFifo_1.sv \
@@ -62,7 +63,7 @@ ${S2RTL_PATH}/ttu_core/ttu_core.sv \
 TOPLEVEL = ttu_core
 
 # 4. cocotb测试用例文件名（无.py后缀）
-MODULE = test_ttu_core
+MODULE = test_fma #test_ttu_core
 
 # 5. Verilator额外参数（生成波形文件，可选）
 EXTRA_ARGS += #--trace -g2012 -Wall
