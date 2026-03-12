@@ -6,6 +6,7 @@ import config._
 import tensor_core._
 import alu._
 import dma._
+import common_lib._
 
 case class ttu_core(cfg: TTConfig) extends Component {
   val io = new Bundle {
@@ -18,7 +19,18 @@ case class ttu_core(cfg: TTConfig) extends Component {
 
       // 中断：job done / error
       val irq  = out Bool()
+
+      val fp_mac_a = in Bits(32 bits)
+      val fp_mac_b = in Bits(32 bits)
+      val fp_mac_c = in Bits(32 bits)
+      val fp_mac_z = out Bits(32 bits)
   }
+
+  val fp_mac_unit = new fp_mac(23,8,0)
+  fp_mac_unit.io.a := io.fp_mac_a
+  fp_mac_unit.io.b := io.fp_mac_b
+  fp_mac_unit.io.c := io.fp_mac_c
+  io.fp_mac_z := fp_mac_unit.io.z
 
   val fetch_unit = new fetch(cfg)
   val decode_unit = new decode(cfg)
