@@ -1,6 +1,7 @@
 <testsuites name="results">
   <testsuite name="all" package="all">
-    <property name="random_seed" value="1772964515" />
-    <testcase name="test_ttu_core" classname="test_ttu_core" file="D:\Project\Tiny-TPU\design\TTU\TTU\src\test\scala\sim\test_ttu_core.py" lineno="815" time="0.667778491973877" sim_time_ns="31740.001" ratio_time="47530.732692782876" />
+    <property name="random_seed" value="1773324821" />
+    <testcase name="test_fma_basic" classname="test_fma" file="D:\Project\Tiny-TPU\design\TTU\TTU\src\test\scala\sim\test_fma.py" lineno="68" time="0.07680439949035645" sim_time_ns="400.001" ratio_time="5208.048010976559" />
+    <testcase name="test_fma_random" classname="test_fma" file="D:\Project\Tiny-TPU\design\TTU\TTU\src\test\scala\sim\test_fma.py" lineno="183" time="1.013132095336914" sim_time_ns="30100.001" ratio_time="29709.84843786864" />
   </testsuite>
 </testsuites>

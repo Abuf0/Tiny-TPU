@@ -199,7 +199,7 @@ async def test_fma_random(dut):
 
     for i in range(NUM_TESTS):
         # Generate random floats across ranges
-        r = 0.7 #random.random()
+        r = 0.5 #random.random()
 
         if r == 0.1:
             a = random.uniform(-1e6, 1e6)

@@ -19,7 +19,6 @@ case class ttu_core(cfg: TTConfig) extends Component {
 
       // 中断：job done / error
       val irq  = out Bool()
-
       val fp_mac_a = in Bits(32 bits)
       val fp_mac_b = in Bits(32 bits)
       val fp_mac_c = in Bits(32 bits)
