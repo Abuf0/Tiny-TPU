@@ -3,7 +3,8 @@
 SIM ?= icarus
 WAVES = 1
 # 2. SpinalHDL生成的Verilog文件路径
-S2RTL_PATH = D:/Project/Tiny-TPU/design/TTU/TTU/build/s2rtl
+S2RTL_PATH = D:/Learn/IC/project/NPU/design/TTU/TTU/build/s2rtl
+#S2RTL_PATH = D:/Project/Tiny-TPU/design/TTU/TTU/build/s2rtl
 VERILOG_SOURCES = \
 ${S2RTL_PATH}/ttu_core/enumdefine.sv \
 ${S2RTL_PATH}/ttu_core/StreamFifo_34.sv \
