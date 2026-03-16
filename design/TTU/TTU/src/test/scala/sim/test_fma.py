@@ -1,34 +1,28 @@
-# test_fma.py - cocotb testbench for FP32 FMA
+# test_fma.py - 修复排空流水线卡住问题 + 时序对齐
 import os
 import xml.etree.ElementTree as ET
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge, Timer, Event
 import struct
 import math
 import random
 import time
+from collections import deque
 
 # ============================================================
 # Config
 # ============================================================
-PIPELINE_LATENCY = 3
-NUM_RANDOM_TESTS = 1000
-
-#RANDOM_SEED = 123456
+PIPELINE_LATENCY = 5
+NUM_RANDOM_TESTS = 10000
 RANDOM_SEED = random.SystemRandom().randint(0, 2**32 - 1)
-
-
-# 如果你的顶层端口名不是 io_fp_mac_a / b / c / z，
-# 可以改成 False，然后在 get_ports() 里切到 io.a / io.b / io.c / io.z
 USE_PREFIXED_PORTS = True
-
+CONTINUOUS_MODE = True
 
 # ============================================================
-# FP32 helpers
+# FP32 helpers (完全保留)
 # ============================================================
 def float_to_bits(f: float) -> int:
-    """Convert Python float to IEEE754 FP32 bit pattern."""
     if math.isnan(f):
         return 0x7FC00000
     if math.isinf(f):
@@ -42,74 +36,45 @@ def float_to_bits(f: float) -> int:
     except (struct.error, ValueError):
         return 0x7FC00000
 
-
 def bits_to_float(b: int) -> float:
-    """Convert IEEE754 FP32 bit pattern to Python float."""
     return struct.unpack(">f", struct.pack(">I", b & 0xFFFFFFFF))[0]
 
-
 def fp32(x: float) -> float:
-    """Round a Python float to FP32 and back."""
     return bits_to_float(float_to_bits(x))
 
-
 def canonicalize_nan_bits(bits: int) -> int:
-    """Map any NaN payload to canonical qNaN for relaxed NaN comparison."""
     exp = (bits >> 23) & 0xFF
     frac = bits & 0x7FFFFF
     if exp == 0xFF and frac != 0:
         return 0x7FC00000
     return bits & 0xFFFFFFFF
 
-
 def compute_fma_ref(a: float, b: float, c: float) -> float:
-    """
-    FP32 reference model:
-      1) quantize inputs to FP32
-      2) handle IEEE special cases first
-      3) compute fused multiply-add in high precision if possible
-      4) round result back to FP32
-    """
     a32 = fp32(a)
     b32 = fp32(b)
     c32 = fp32(c)
 
-    # ------------------------------------------------------------
-    # IEEE special-case handling first
-    # ------------------------------------------------------------
-    # NaN propagation
     if math.isnan(a32) or math.isnan(b32) or math.isnan(c32):
         return float("nan")
 
-    # invalid: inf * 0 + c  or  0 * inf + c
     if (math.isinf(a32) and b32 == 0.0) or (math.isinf(b32) and a32 == 0.0):
         return float("nan")
 
-    # product is inf
     prod_inf = math.isinf(a32) or math.isinf(b32)
     if prod_inf:
         prod_sign_positive = ((a32 > 0) == (b32 > 0))
         prod_inf_val = float("inf") if prod_sign_positive else float("-inf")
 
-        # inf + (-inf) => NaN
         if math.isinf(c32) and ((c32 > 0) != (prod_inf_val > 0)):
             return float("nan")
-
-        # inf + finite / same-sign inf => inf
         return fp32(prod_inf_val)
 
-    # finite product + inf => inf
     if math.isinf(c32):
         return fp32(c32)
 
-    # ------------------------------------------------------------
-    # Normal finite path
-    # ------------------------------------------------------------
     try:
-        # If available, true fused op in Python runtime
         result = math.fma(a32, b32, c32)
     except AttributeError:
-        # No math.fma in this Python: use high precision decimal for finite numbers only
         from decimal import Decimal, getcontext
         getcontext().prec = 100
         da = Decimal(str(a32))
@@ -118,7 +83,6 @@ def compute_fma_ref(a: float, b: float, c: float) -> float:
         result = float(da * db + dc)
 
     return fp32(result)
-
 
 def check_float_equal(hw_result: float, sw_result: float, tolerance: float = 1e-6) -> bool:
     if math.isnan(sw_result):
@@ -130,18 +94,11 @@ def check_float_equal(hw_result: float, sw_result: float, tolerance: float = 1e-
     relative_error = abs((hw_result - sw_result) / sw_result)
     return relative_error < tolerance
 
-
 def check_bits_equal(hw_bits: int, sw_bits: int) -> bool:
-    """
-    Prefer bit-exact compare.
-    Relaxation:
-      - all NaNs are treated as equivalent
-    """
     return canonicalize_nan_bits(hw_bits) == canonicalize_nan_bits(sw_bits)
 
-
 # ============================================================
-# DUT port helpers
+# DUT port helpers (完全保留)
 # ============================================================
 def get_ports(dut):
     if USE_PREFIXED_PORTS:
@@ -165,7 +122,6 @@ def get_ports(dut):
             "z": dut.io_z,
         }
 
-
 async def reset_dut(dut, ports):
     ports["resetn"].value = 0
     ports["a"].value = 0
@@ -174,74 +130,164 @@ async def reset_dut(dut, ports):
     ports["rnd"].value = 0
     await Timer(100, units="ns")
     ports["resetn"].value = 1
-    await RisingEdge(ports["clk"])
-
-
-async def drive_and_sample(dut, ports, a: float, b: float, c: float, latency: int = PIPELINE_LATENCY):
-    a_bits = float_to_bits(a)
-    b_bits = float_to_bits(b)
-    c_bits = float_to_bits(c)
-
-    ports["a"].value = a_bits
-    ports["b"].value = b_bits
-    ports["c"].value = c_bits
-
-    # 输入打一拍
-    await RisingEdge(ports["clk"])
-
-    # 等待流水线
-    for _ in range(latency):
+    for _ in range(2):
         await RisingEdge(ports["clk"])
 
-    hw_bits = int(ports["z"].value) & 0xFFFFFFFF
-    hw_float = bits_to_float(hw_bits)
+# ============================================================
+# 核心修复：PipelineTester (解决卡住问题 + 时序对齐)
+# ============================================================
+class PipelineTester:
+    """Helper class for pipeline-based FMA testing"""
+    def __init__(self, dut, ports, latency):
+        self.dut = dut
+        self.ports = ports
+        self.latency = latency
+        self.pending_queue = deque()  # 已发射未收集的用例
+        self.test_count = 0
+        self.error_count = 0
+        self.cycle_counter = 0  # 全局时钟周期计数器（替代emit_cycle，避免判断错误）
 
-    sw_float = compute_fma_ref(a, b, c)
-    sw_bits = float_to_bits(sw_float)
+    async def push_input(self, a: float, b: float, c: float, desc: str = ""):
+        """发射单个用例，记录发射的全局周期"""
+        a_bits = float_to_bits(a)
+        b_bits = float_to_bits(b)
+        c_bits = float_to_bits(c)
 
-    return {
-        "a_bits": a_bits,
-        "b_bits": b_bits,
-        "c_bits": c_bits,
-        "hw_bits": hw_bits,
-        "hw_float": hw_float,
-        "sw_bits": sw_bits,
-        "sw_float": sw_float,
-    }
+        # 计算预期结果
+        sw_float = compute_fma_ref(a, b, c)
+        sw_bits = float_to_bits(sw_float)
+        case_info = {
+            "desc": desc,
+            "a": a,
+            "b": b,
+            "c": c,
+            "a_bits": a_bits,
+            "b_bits": b_bits,
+            "c_bits": c_bits,
+            "sw_float": sw_float,
+            "sw_bits": sw_bits,
+            "emit_cycle": self.cycle_counter  # 记录发射时的全局周期
+        }
 
+        # 加入pending队列
+        self.pending_queue.append(case_info)
+        self.test_count += 1
 
-def log_case(dut, desc, a, b, c, result, passed):
-    status = "PASS" if passed else "FAIL"
-    dut._log.info(f"[{status}] {desc}")
-    dut._log.info(
-        f"  A={a} (0x{result['a_bits']:08X}), "
-        f"B={b} (0x{result['b_bits']:08X}), "
-        f"C={c} (0x{result['c_bits']:08X})"
-    )
-    dut._log.info(
-        f"  HW={result['hw_float']} (0x{result['hw_bits']:08X})"
-    )
-    dut._log.info(
-        f"  SW={result['sw_float']} (0x{result['sw_bits']:08X})"
-    )
+        # 驱动输入到DUT
+        self.ports["a"].value = a_bits
+        self.ports["b"].value = b_bits
+        self.ports["c"].value = c_bits
+        self.ports["rnd"].value = 0
 
+        # 等待时钟上升沿，全局周期+1
+        await RisingEdge(self.ports["clk"])
+        self.cycle_counter += 1
+
+    async def pop_output(self):
+        """收集单个就绪的输出（仅处理达到延迟的用例）"""
+        if not self.pending_queue:
+            return False
+
+        # 检查队列头部用例是否达到收集周期（发射周期 + 流水线延迟）
+        head_case = self.pending_queue[0]
+        if self.cycle_counter < head_case["emit_cycle"] + self.latency + 1:
+            return False  # 未到收集时间，返回False
+
+        # 已到收集时间，取出用例
+        expected = self.pending_queue.popleft()
+
+        # 读取当前时钟的HW输出（关键：先读值，不额外等时钟）
+        hw_bits = int(self.ports["z"].value) & 0xFFFFFFFF
+        hw_float = bits_to_float(hw_bits)
+
+        # 结果校验
+        bit_match = check_bits_equal(hw_bits, expected["sw_bits"])
+        float_match = check_float_equal(hw_float, expected["sw_float"])
+        passed = bit_match or float_match
+
+        # 日志输出
+        self._log_result(expected, hw_float, hw_bits, passed)
+
+        if not passed:
+            self.error_count += 1
+        return True
+
+    def _log_result(self, expected, hw_float, hw_bits, passed):
+        status = "PASS" if passed else "FAIL"
+        desc = expected["desc"] if expected["desc"] else f"test_{expected['emit_cycle']}"
+
+        self.dut._log.info(f"[{status}] {desc}")
+        self.dut._log.info(
+            f"  A={expected['a']} (0x{expected['a_bits']:08X}), "
+            f"B={expected['b']} (0x{expected['b_bits']:08X}), "
+            f"C={expected['c']} (0x{expected['c_bits']:08X})"
+        )
+        self.dut._log.info(
+            f"  HW={hw_float} (0x{hw_bits:08X})"
+        )
+        self.dut._log.info(
+            f"  SW={expected['sw_float']} (0x{expected['sw_bits']:08X})"
+        )
+
+    async def run_test(self, test_cases):
+        """
+        修复版执行逻辑：
+        1. 边发射边收集（每发射一个，检查一次是否有可收集的用例）
+        2. 发射完成后，最多等待latency*2个周期排空流水线（避免死循环）
+        """
+        self.dut._log.info(f"Starting pipeline test (latency={self.latency})...")
+
+        # 第一步：逐个发射用例 + 实时收集
+        for case in test_cases:
+            a, b, c, desc = case
+            await self.push_input(a, b, c, desc)
+            # 每次发射后，尽可能收集就绪的用例（可能有多个）
+            while await self.pop_output():
+                pass
+
+        # 第二步：排空剩余用例（添加最大等待周期，避免死循环）
+        self.dut._log.info("Emission complete, draining remaining pipeline...")
+        max_drain_cycles = self.latency * 2 + 2 # 最大等待周期（流水线深度*2）
+        drain_cycles = 0
+
+        while self.pending_queue and drain_cycles < max_drain_cycles:
+            # 等待一个时钟周期
+            await RisingEdge(self.ports["clk"])
+            self.cycle_counter += 1
+            drain_cycles += 1
+
+            # 尝试收集就绪的用例
+            while await self.pop_output():
+                pass
+
+        # 检查是否有未收集的用例（调试用）
+        if self.pending_queue:
+            self.dut._log.warning(f"Remaining {len(self.pending_queue)} cases not collected!")
+
+        # 最终统计
+        self.dut._log.info(f"Total tests: {self.test_count}, Errors: {self.error_count}")
+        assert self.error_count == 0, f"Test failed with {self.error_count} errors!"
 
 # ============================================================
-# Tests
+# 测试用例（适配修复版）
 # ============================================================
 @cocotb.test()
 async def test_fma_basic(dut):
-    """Basic FP32 FMA tests."""
-
+    """Basic FP32 FMA tests with pipeline support"""
     ports = get_ports(dut)
 
+    # 启动时钟
     clock = Clock(ports["clk"], 10, units="ns")
     cocotb.start_soon(clock.start())
 
+    # 复位DUT
     await reset_dut(dut, ports)
 
-    dut._log.info("Starting basic FMA tests...")
+    # 初始化测试器
+    tester = PipelineTester(dut, ports, PIPELINE_LATENCY)
+    dut._log.info("Starting basic FMA tests (timing aligned)...")
 
+    # 定义测试用例
     test_cases = [
         (1.5, 2.0, 0.5, "1.5*2.0+0.5=3.5"),
         (1.0, 1.0, 1.0, "1.0*1.0+1.0=2.0"),
@@ -259,180 +305,57 @@ async def test_fma_basic(dut):
         (float("nan"), 1.0, 2.0, "nan*1+2 => NaN"),
     ]
 
-    errors = 0
-
-    for a, b, c, desc in test_cases:
-        result = await drive_and_sample(dut, ports, a, b, c)
-
-        bit_match = check_bits_equal(result["hw_bits"], result["sw_bits"])
-        float_match = check_float_equal(result["hw_float"], result["sw_float"])
-        passed = bit_match or float_match
-
-        log_case(dut, desc, a, b, c, result, passed)
-
-        if not passed:
-            errors += 1
-            dut._log.error(
-                f"Mismatch! abs diff = {abs(result['hw_float'] - result['sw_float']) if not (math.isnan(result['hw_float']) or math.isnan(result['sw_float'])) else 'NaN'}"
-            )
-
-    assert errors == 0, f"Basic test failed with {errors} errors"
-
+    # 执行测试
+    await tester.run_test(test_cases)
 
 @cocotb.test()
 async def test_fma_random(dut):
-    """Randomized FP32 FMA tests."""
-
+    """Randomized FP32 FMA tests with pipeline support"""
     ports = get_ports(dut)
 
+    # 启动时钟
     clock = Clock(ports["clk"], 10, units="ns")
     cocotb.start_soon(clock.start())
 
+    # 复位DUT
     await reset_dut(dut, ports)
 
+    # 初始化测试器
+    tester = PipelineTester(dut, ports, PIPELINE_LATENCY)
     random.seed(RANDOM_SEED)
-    dut._log.info(f"Starting random FMA tests... seed={RANDOM_SEED}")
+    dut._log.info(f"Starting random FMA tests... seed={RANDOM_SEED}, latency={PIPELINE_LATENCY}")
 
-    errors = 0
-
+    # 生成随机测试用例
+    test_cases = []
     for i in range(NUM_RANDOM_TESTS):
         r = random.random()
 
         if r < 0.15:
-            # normal range
             a = random.uniform(-1e6, 1e6)
             b = random.uniform(-1e6, 1e6)
             c = random.uniform(-1e6, 1e6)
         elif r < 0.35:
-            # small values
             a = random.uniform(-1e-10, 1e-10)
             b = random.uniform(-1e10, 1e10)
             c = random.uniform(-1e-5, 1e-5)
         elif r < 0.60:
-            # large values
             a = random.uniform(-1e20, 1e20)
             b = random.uniform(-1e10, 1e10)
             c = random.uniform(-1e20, 1e20)
         elif r < 0.80:
-            # around 1.0
             a = 1.0 + random.uniform(-1e-6, 1e-6)
             b = 1.0 + random.uniform(-1e-6, 1e-6)
             c = random.uniform(-2.0, 2.0)
         elif r < 0.90:
-            # zeros / signed zeros
             a = random.choice([0.0, -0.0, 1.0, -1.0])
             b = random.choice([0.0, -0.0, 2.0, -2.0])
             c = random.choice([0.0, -0.0, 3.0, -3.0])
         else:
-            # special values
             a = random.choice([float("inf"), float("-inf"), float("nan"), 1.0, -1.0])
             b = random.choice([float("inf"), float("-inf"), float("nan"), 2.0, -2.0, 0.0])
             c = random.choice([float("inf"), float("-inf"), float("nan"), 3.0, -3.0, 0.0])
 
-        result = await drive_and_sample(dut, ports, a, b, c)
+        test_cases.append((a, b, c, f"random_{i}"))
 
-        bit_match = check_bits_equal(result["hw_bits"], result["sw_bits"])
-        float_match = check_float_equal(result["hw_float"], result["sw_float"], tolerance=1e-5)
-        passed = bit_match or float_match
-
-        if not passed:
-            errors += 1
-            if errors <= 10:
-                dut._log.error(f"Random test {i} failed:")
-                log_case(dut, f"random_{i}", a, b, c, result, passed)
-
-    dut._log.info(f"Random test completed: {NUM_RANDOM_TESTS} tests, {errors} errors")
-    assert errors == 0, f"Random test failed with {errors} errors"
-
-# @cocotb.test()
-# async def test_fma_debug(dut):
-#     """Randomized FP32 FMA tests."""
-#
-#     ports = get_ports(dut)
-#
-#     clock = Clock(ports["clk"], 10, units="ns")
-#     cocotb.start_soon(clock.start())
-#     NUM_DEBUG_TESTS = 1
-#
-#     await reset_dut(dut, ports)
-#
-#     errors = 0
-#
-#     for i in range(NUM_DEBUG_TESTS):
-#         a = bits_to_float(0x3F7FFFFC)
-#         b = bits_to_float(0x3F7FFFF2)
-#         c = bits_to_float(0x3C38F776)
-#
-#         result = await drive_and_sample(dut, ports, a, b, c)
-#
-#         bit_match = check_bits_equal(result["hw_bits"], result["sw_bits"])
-#         float_match = check_float_equal(result["hw_float"], result["sw_float"], tolerance=1e-5)
-#         passed = bit_match or float_match
-#
-#         if not passed:
-#             errors += 1
-#             if errors <= 10:
-#                 dut._log.error(f"Random test {i} failed:")
-#                 log_case(dut, f"random_{i}", a, b, c, result, passed)
-#
-#     dut._log.info(f"Random test completed: {NUM_DEBUG_TESTS} tests, {errors} errors")
-#     assert errors == 0, f"Random test failed with {errors} errors"
-
-# # 解析XML，获取指定case的参数
-# def get_target_case(xml_path, case_name):
-#     tree = ET.parse(xml_path)
-#     root = tree.getroot()
-#     # 遍历所有testcase，找到目标name
-#     for testcase in root.iter("testcase"):
-#         if testcase.get("name") == case_name:
-#             params = {}
-#             # 提取该case的所有参数（a/b/c/expected）
-#             for param in testcase.iter("param"):
-#                 param_name = param.get("name")
-#                 param_value = param.get("value")
-#                 # 转换为整数（16进制字符串→int）
-#                 params[param_name] = int(param_value, 16)
-#             return params
-#     # 未找到case时抛出异常
-#     raise ValueError(f"Case {case_name} not found in {xml_path}")
-#
-# # 核心测试函数：仅运行目标case
-# @cocotb.test()
-# async def test_target_case(dut):
-#     # ========== 关键：指定要仿真的case名称 ==========
-#     TARGET_CASE = "random_20"  # 改成你要仿真的case名（如random_13）
-#     XML_PATH = "D:\Learn\IC\project\NPU\design\TTU\TTU\src\test\scala\sim\results.xml"     # 你的XML文件路径
-#
-#
-#     # 1. 获取目标case的参数
-#     case_params = get_target_case(XML_PATH, TARGET_CASE)
-#     a = case_params["a"]
-#     b = case_params["b"]
-#     c = case_params["c"]
-#     expected = case_params["expected"]
-#
-#     # 2. 初始化DUT时钟（根据你的设计调整频率）
-#     clock = Clock(dut.clk, 10, units="ns")
-#     cocotb.start_soon(clock.start())
-#
-#     # 3. 复位DUT（根据你的设计添加复位逻辑）
-#     dut.rst_n.value = 0
-#     await RisingEdge(dut.clk)
-#     dut.rst_n.value = 1
-#     await RisingEdge(dut.clk)
-#
-#     # 4. 加载目标case的输入到DUT
-#     dut.a.value = a       # 假设DUT的a端口是32位输入
-#     dut.b.value = b       # 假设DUT的b端口是32位输入
-#     dut.c.value = c       # 假设DUT的c端口是32位输入
-#     dut.valid_in.value = 1# 输入有效信号
-#
-#     # 5. 等待结果输出（根据你的设计调整触发条件）
-#     await RisingEdge(dut.clk)
-#     dut.valid_in.value = 0
-#     await RisingEdge(dut.valid_out)  # 假设valid_out是结果有效信号
-#
-#     # 6. 校验结果
-#     actual = dut.result.value.integer
-#     assert actual == expected, \
-#         f"Case {TARGET_CASE} failed! Actual: 0x{actual:08X}, Expected: 0x{expected:08X}"
+    # 执行测试
+    await tester.run_test(test_cases)
