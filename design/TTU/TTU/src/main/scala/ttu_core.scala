@@ -22,6 +22,7 @@ case class ttu_core(cfg: TTConfig) extends Component {
       val fp_mac_a = in Bits(32 bits)
       val fp_mac_b = in Bits(32 bits)
       val fp_mac_c = in Bits(32 bits)
+      val fp_mac_rnd = in Bits(3 bits)
       val fp_mac_z = out Bits(32 bits)
   }
 
@@ -29,6 +30,7 @@ case class ttu_core(cfg: TTConfig) extends Component {
   fp_mac_unit.io.a := io.fp_mac_a
   fp_mac_unit.io.b := io.fp_mac_b
   fp_mac_unit.io.c := io.fp_mac_c
+  fp_mac_unit.io.rnd := io.fp_mac_rnd
   io.fp_mac_z := fp_mac_unit.io.z
 
   val fetch_unit = new fetch(cfg)

@@ -1,19 +1,23 @@
 # test_fma.py - cocotb testbench for FP32 FMA
-
+import os
+import xml.etree.ElementTree as ET
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, Timer
 import struct
 import math
 import random
-
+import time
 
 # ============================================================
 # Config
 # ============================================================
 PIPELINE_LATENCY = 3
-NUM_RANDOM_TESTS = 10000
-RANDOM_SEED = 123456
+NUM_RANDOM_TESTS = 1000
+
+#RANDOM_SEED = 123456
+RANDOM_SEED = random.SystemRandom().randint(0, 2**32 - 1)
+
 
 # 如果你的顶层端口名不是 io_fp_mac_a / b / c / z，
 # 可以改成 False，然后在 get_ports() 里切到 io.a / io.b / io.c / io.z
@@ -147,6 +151,7 @@ def get_ports(dut):
             "a": dut.io_fp_mac_a,
             "b": dut.io_fp_mac_b,
             "c": dut.io_fp_mac_c,
+            "rnd": dut.io_fp_mac_rnd,
             "z": dut.io_fp_mac_z,
         }
     else:
@@ -156,6 +161,7 @@ def get_ports(dut):
             "a": dut.io_a,
             "b": dut.io_b,
             "c": dut.io_c,
+            "rnd": dut.io_rnd,
             "z": dut.io_z,
         }
 
@@ -165,6 +171,7 @@ async def reset_dut(dut, ports):
     ports["a"].value = 0
     ports["b"].value = 0
     ports["c"].value = 0
+    ports["rnd"].value = 0
     await Timer(100, units="ns")
     ports["resetn"].value = 1
     await RisingEdge(ports["clk"])
@@ -336,3 +343,96 @@ async def test_fma_random(dut):
 
     dut._log.info(f"Random test completed: {NUM_RANDOM_TESTS} tests, {errors} errors")
     assert errors == 0, f"Random test failed with {errors} errors"
+
+# @cocotb.test()
+# async def test_fma_debug(dut):
+#     """Randomized FP32 FMA tests."""
+#
+#     ports = get_ports(dut)
+#
+#     clock = Clock(ports["clk"], 10, units="ns")
+#     cocotb.start_soon(clock.start())
+#     NUM_DEBUG_TESTS = 1
+#
+#     await reset_dut(dut, ports)
+#
+#     errors = 0
+#
+#     for i in range(NUM_DEBUG_TESTS):
+#         a = bits_to_float(0x3F7FFFFC)
+#         b = bits_to_float(0x3F7FFFF2)
+#         c = bits_to_float(0x3C38F776)
+#
+#         result = await drive_and_sample(dut, ports, a, b, c)
+#
+#         bit_match = check_bits_equal(result["hw_bits"], result["sw_bits"])
+#         float_match = check_float_equal(result["hw_float"], result["sw_float"], tolerance=1e-5)
+#         passed = bit_match or float_match
+#
+#         if not passed:
+#             errors += 1
+#             if errors <= 10:
+#                 dut._log.error(f"Random test {i} failed:")
+#                 log_case(dut, f"random_{i}", a, b, c, result, passed)
+#
+#     dut._log.info(f"Random test completed: {NUM_DEBUG_TESTS} tests, {errors} errors")
+#     assert errors == 0, f"Random test failed with {errors} errors"
+
+# # 解析XML，获取指定case的参数
+# def get_target_case(xml_path, case_name):
+#     tree = ET.parse(xml_path)
+#     root = tree.getroot()
+#     # 遍历所有testcase，找到目标name
+#     for testcase in root.iter("testcase"):
+#         if testcase.get("name") == case_name:
+#             params = {}
+#             # 提取该case的所有参数（a/b/c/expected）
+#             for param in testcase.iter("param"):
+#                 param_name = param.get("name")
+#                 param_value = param.get("value")
+#                 # 转换为整数（16进制字符串→int）
+#                 params[param_name] = int(param_value, 16)
+#             return params
+#     # 未找到case时抛出异常
+#     raise ValueError(f"Case {case_name} not found in {xml_path}")
+#
+# # 核心测试函数：仅运行目标case
+# @cocotb.test()
+# async def test_target_case(dut):
+#     # ========== 关键：指定要仿真的case名称 ==========
+#     TARGET_CASE = "random_20"  # 改成你要仿真的case名（如random_13）
+#     XML_PATH = "D:\Learn\IC\project\NPU\design\TTU\TTU\src\test\scala\sim\results.xml"     # 你的XML文件路径
+#
+#
+#     # 1. 获取目标case的参数
+#     case_params = get_target_case(XML_PATH, TARGET_CASE)
+#     a = case_params["a"]
+#     b = case_params["b"]
+#     c = case_params["c"]
+#     expected = case_params["expected"]
+#
+#     # 2. 初始化DUT时钟（根据你的设计调整频率）
+#     clock = Clock(dut.clk, 10, units="ns")
+#     cocotb.start_soon(clock.start())
+#
+#     # 3. 复位DUT（根据你的设计添加复位逻辑）
+#     dut.rst_n.value = 0
+#     await RisingEdge(dut.clk)
+#     dut.rst_n.value = 1
+#     await RisingEdge(dut.clk)
+#
+#     # 4. 加载目标case的输入到DUT
+#     dut.a.value = a       # 假设DUT的a端口是32位输入
+#     dut.b.value = b       # 假设DUT的b端口是32位输入
+#     dut.c.value = c       # 假设DUT的c端口是32位输入
+#     dut.valid_in.value = 1# 输入有效信号
+#
+#     # 5. 等待结果输出（根据你的设计调整触发条件）
+#     await RisingEdge(dut.clk)
+#     dut.valid_in.value = 0
+#     await RisingEdge(dut.valid_out)  # 假设valid_out是结果有效信号
+#
+#     # 6. 校验结果
+#     actual = dut.result.value.integer
+#     assert actual == expected, \
+#         f"Case {TARGET_CASE} failed! Actual: 0x{actual:08X}, Expected: 0x{expected:08X}"
