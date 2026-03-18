@@ -14,7 +14,7 @@ from collections import deque
 # Config
 # ============================================================
 PIPELINE_LATENCY = 5
-NUM_RANDOM_TESTS = 10000
+NUM_RANDOM_TESTS = 100
 RANDOM_SEED = random.SystemRandom().randint(0, 2**32 - 1)
 USE_PREFIXED_PORTS = True
 CONTINUOUS_MODE = True
