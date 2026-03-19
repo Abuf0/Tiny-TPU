@@ -96,16 +96,20 @@ case class fp_mac(sig_w: Int=23, exp_w: Int=8, comp: Int=5) extends Component {
 
   /** stage 2. **/
   // 2a. product_man计算
-  val c_man_ext = (c_man_1_r1.resize(MAN_TWD) << MAN_WD).resize(MAN_TWD)
-  val product_man = ((a_man_1_r1 * b_man_1_r1).resize(MAN_TWD) << MAN_WD).resize(MAN_TWD)
   // todo : replace booth4
   val man_booth4 = new mult_booth4(sig_w+1, sig_w+1)
   man_booth4.io.a := a_man_1_r1.asBits
   man_booth4.io.b := b_man_1_r1.asBits
   man_booth4.io.tc := False
-  val product_man_raw = a_man_1_r1 * b_man_1_r1
-  val product_man_ref = man_booth4.io.z
-  val booth_error = (product_man_raw.asBits =/= product_man_ref)
+
+  val c_man_ext = (c_man_1_r1.resize(MAN_TWD) << MAN_WD).resize(MAN_TWD)
+  //val product_man = ((a_man_1_r1 * b_man_1_r1).resize(MAN_TWD) << MAN_WD).resize(MAN_TWD) // raw mult
+  val product_man = (man_booth4.io.z.asUInt.resize(MAN_TWD) << MAN_WD).resize(MAN_TWD)  // booth4
+
+//  // debug
+//  val product_man_raw = a_man_1_r1 * b_man_1_r1
+//  val product_man_ref = man_booth4.io.z
+//  val booth_error = (product_man_raw.asBits =/= product_man_ref)
 
   // 2b. man对齐
   val product_shift = UInt(MAN_TWD bits)
