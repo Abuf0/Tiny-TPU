@@ -82,7 +82,7 @@
             "H_OUT": 4,
             "W_OUT": 4,
             "C_OUT_LOW": 0,
-            "C_OUT_HIGH": 1,
+            "C_OUT_HIGH": 2,
             "OH0": 0,
             "OW0_LOW": 0,
             "0W0_HIGH": 0,
@@ -153,6 +153,17 @@
             "K_TILE": 27,
             "M_TILE": 8,
             "N_TILE": 8
+        },
+        {
+            "type": "DMA_NORMAL",
+            "SUCC_CNT": 0,
+            "DEP_CNT": 1,
+            "DEP_ID_0": 8,
+            "isLoad": 0,
+            "extAddr": "0x28000",
+            "l1Addr":"0x28000",
+            "bytes": 256,
+            "trans_len": 8
         }
     ]
 }

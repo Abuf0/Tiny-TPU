@@ -357,7 +357,6 @@ class Axi4Driver:
     async def mock_slave_write_response(self, delay_cycles=2):
         """模拟Slave响应TTU Master的写操作（适配Verilog信号）"""
         cocotb.log.info(f"\n[AXI4_WRITE] 模拟Slave响应TTU Master写操作（延迟{delay_cycles}周期）")
-
         # 1. 等待TTU发起写地址（aw_valid=1）
         await self._wait_signal_with_timeout(self.aw_valid, 1, 1000)
         cocotb.log.info(
@@ -809,6 +808,58 @@ async def axi_read_transfer(
 
     return total_data
 
+
+async def mock_slave_write_receive(self, mock_data, trans_len, l1_dw):
+    """
+    AXI从机mock写接收逻辑
+    Returns:
+        trans_ok: bool，本次突发是否成功
+        actual_len: int，实际接收的line数
+    """
+    actual_len = 0
+    self.aw_ready.value = 1
+
+    # 1. 等待AW通道有效（aw_valid & aw_ready）
+    while not (self.aw_valid.value and self.aw_ready.value):
+        await RisingEdge(self.clk)
+
+    # 2. 校验AW突发长度（需匹配trans_len）
+    burst_len = self.aw_len.value.integer
+    if burst_len != trans_len - 1:  # AXI len是突发数-1
+        cocotb.log.error(f"AW突发长度不匹配：期望{trans_len-1}，实际{burst_len}")
+        return False, 0
+
+    # 3. 接收W通道数据（突发传输）
+    self.w_ready.value = 1  # 置位W ready
+    for i in range(trans_len):
+        # 等待W valid
+        while not self.w_valid.value:
+            await RisingEdge(self.clk)
+        # 校验W数据（可选）
+        w_data = self.w_data.value.integer
+        expected_data = mock_data[i]
+        if w_data != expected_data:
+            cocotb.log.error(f"W数据不匹配：第{i}line，期望0x{expected_data:x}，实际0x{w_data:x}")
+            self.w_ready.value = 0
+            return False, actual_len
+        # 置位last（最后一个beat）
+        if i == trans_len - 1:
+            assert self.w_last.value, "W last标志未置位"
+        # 等待时钟沿，计数+1
+        await RisingEdge(self.clk)
+        actual_len += 1
+    self.w_ready.value = 0
+
+    # 4. 发送B响应（OKAY）
+    self.b_valid.value = 1
+    self.b_resp.value = 0  # 0=OKAY
+    while not self.b_ready.value:
+        await RisingEdge(self.clk)
+    await RisingEdge(self.clk)
+    self.b_valid.value = 0
+
+    return True, actual_len
+
 # -------------------------
 # 主测试函数（加DUT信号保底赋值）
 # -------------------------
@@ -879,11 +930,11 @@ async def test_ttu_core(dut):
     assert write_resp == 0, f"写响应错误，期望0，实际{write_resp}"
     cocotb.log.info(f"\n✅ 写寄存器0x10成功！响应码：0x{write_resp.integer:02x}")
 
-    write_resp = await ctrl_axi.write_reg(addr=0x18, data=0x9, timeout_ms=2)    # cmd size
+    write_resp = await ctrl_axi.write_reg(addr=0x18, data=0xa, timeout_ms=2)    # cmd size
     write_resp = await ctrl_axi.write_reg(addr=0x1C, data=0x1, timeout_ms=2)
     write_resp = await ctrl_axi.write_reg(addr=0x24, data=0x0, timeout_ms=2)
     write_resp = await ctrl_axi.write_reg(addr=0x28, data=0x0, timeout_ms=2)
-    write_resp = await ctrl_axi.write_reg(addr=0x2C, data=0x120, timeout_ms=2)    # cmd bytes
+    write_resp = await ctrl_axi.write_reg(addr=0x2C, data=0x140, timeout_ms=2)    # cmd bytes
     write_resp = await ctrl_axi.write_reg(addr=0x30, data=0x1, timeout_ms=2)    # cmd axi trans len
     write_resp = await ctrl_axi.write_reg(addr=0x20, data=0x1, timeout_ms=2)    # write last one
 
@@ -907,11 +958,12 @@ async def test_ttu_core(dut):
     cmd1 = [0x0000000000000008000001b00001800080018000ffffffffffffffff00010004]
     cmd2 = [0x0000000000000041089266006008008100008000ffffffffffff000000010102]
     cmd3 = [0x0008000000010041089266006008008100018000ffffffffffff0001000101fe]
-    cmd4 = [0x0000000000000000000000010008008100028000ffffffff0001000000010205]
+    cmd4 = [0x0000000000000000000000020008008100028000ffffffff0001000000010205]
     cmd5 = [0x000000080000801b000080040000200000000000ffff00040003000200010381]
     cmd6 = [0x000000080000801b000080040000200800000000ffffffffffff000500010181]
     cmd7 = [0x000000080000801b000080040000200000000002ffffffffffff000600010181]
     cmd8 = [0x000000080000801b000080040000200800000002ffffffffffff000700000181]
+    cmd9 = [0x0000000000000008000001000002800000028000ffffffffffff000800000104]
     # 调用时指定trans_len=8，mock_data=上述列表
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd0, trans_len=1)
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd1, trans_len=1)
@@ -922,6 +974,8 @@ async def test_ttu_core(dut):
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd6, trans_len=1)
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd7, trans_len=1)
     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd8, trans_len=1)
+    dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd9, trans_len=1)
+
 #     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd9, trans_len=1)
 #     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd10, trans_len=1)
 #     dma0_data = await dma0_axi.mock_slave_read_response(mock_data=cmd11, trans_len=1)
@@ -929,7 +983,6 @@ async def test_ttu_core(dut):
 # 1. 生成32bit有效数据的ifm_data（0~99对应32bit值：0x00000000 ~ 0x00000063）
     ifm_data = [i & 0xFFFFFFFF for i in range(48)]  # 确保是32bit无符号整数
     ker_data = [(i%16)+1 & 0xFFFFFFFF for i in range(432)]  # 确保是32bit无符号整数
-
     golden = conv2d_ref(
         ifm_data,
         ker_data,
@@ -944,6 +997,7 @@ async def test_ttu_core(dut):
         pad_h=1,
         pad_w=1
     )
+    ofm_data = [i & 0xFFFFFFFF for i in range(256)]
     # cocotb.log.info(golden)
 
     #global dma0_axi, dma1_axi  # 你的两个AXI实例
@@ -955,9 +1009,11 @@ async def test_ttu_core(dut):
         # task_ker = cocotb.fork(axi_read_transfer_old(dma1_axi, 576, 0x18000, 1))
         task_ifm = cocotb.fork(axi_read_transfer(dma0_axi, ifm_data, dtype="u8", target_addr=0x8000, max_burst_len=1, l1_dw=256))
         task_ker = cocotb.fork(axi_read_transfer(dma1_axi, ker_data, dtype="s8", target_addr=0x18000, max_burst_len=1, l1_dw=256))
+        task_ofm = cocotb.fork(mock_slave_write_receive(dma0_axi, ofm_data, trans_len=8, l1_dw=256))
         # 2. 等待两个任务完成（一行获取结果，等价于gather的简洁性）
         ifm_rdata = await task_ifm.join()
         ker_rdata = await task_ker.join()
+        ofm_wdata = await task_ofm.join()
 
         # ========== 结果验证 ==========
         #assert len(ifm_data) == 32, f"IFM长度错误：{len(ifm_data)}≠32"
